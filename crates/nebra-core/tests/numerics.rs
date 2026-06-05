@@ -31,7 +31,7 @@ fn test_wrap_360_nan_inf() {
 }
 
 #[test]
-fn test_wrap_180_eraAnpm() {
+fn test_wrap_180_era_anpm() {
     assert_eq!(wrap_180(90.0).value, Some(90.0));
     assert_eq!(wrap_180(-180.0).value, Some(180.0)); // ERFA convention
     assert_eq!(wrap_180(270.0).value, Some(-90.0));
