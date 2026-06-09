@@ -56,6 +56,13 @@ pub fn masses_at(jd: f64) -> Vec<Mass> {
 }
 
 pub fn universe(jd: f64, pos: DVec3) -> (f64, DVec3) {
+    let g = gravity(jd, pos);
+    let e = electromagnetism(jd, pos);
+    let w = weak_force(jd, pos);
+    (g.0 + e.0 + w.0, g.1 + e.1 + w.1)
+}
+
+pub fn gravity(jd: f64, pos: DVec3) -> (f64, DVec3) {
     let masses = masses_at(jd);
     let mut omega = 0.0_f64;
     let mut flow = DVec3::ZERO;
@@ -68,10 +75,6 @@ pub fn universe(jd: f64, pos: DVec3) -> (f64, DVec3) {
         flow += delta.normalize() * g;
     }
     (omega, flow)
-}
-
-pub fn gravity(jd: f64, pos: DVec3) -> (f64, DVec3) {
-    universe(jd, pos)
 }
 
 pub fn electromagnetism(_jd: f64, _pos: DVec3) -> (f64, DVec3) {

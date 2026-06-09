@@ -10,9 +10,8 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 hifitime = "4.3"
 glam = "0.33"
-nalgebra = "0.35"
 anise = { git = "https://github.com/nyx-space/anise", branch = "master" }
-erfars = "0.2"
+serde = { version = "1", features = ["derive"] }
 egm96 = "0.2"
 srtm_reader = "0.5"
 geo = "0.33"
@@ -25,9 +24,3 @@ fitsrs = "0.4"
 cdshealpix = "0.9"
 tobari = "0.2"
 ionotrace = "0.5"
-moka = { version = "0.12", features = ["sync"] }
-serde = { version = "1", features = ["derive"] }
-bytemuck = "1.25"
-
-[dev-dependencies]
-proptest = "1"

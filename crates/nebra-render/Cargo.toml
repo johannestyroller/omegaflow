@@ -1,9 +1,0 @@
-[package]
-name = "nebra-render"
-version = "3.0.0"
-edition = "2024"
-
-[dependencies]
-glam = "0.33"
-rayon = "1.12"
-nebra-core = { path = "../nebra-core" }

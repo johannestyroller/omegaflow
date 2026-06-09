@@ -7,8 +7,5 @@ edition = "2024"
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 glam = "0.33"
 nebra-core = { path = "../nebra-core" }
-nebra-render = { path = "../nebra-render" }
-
