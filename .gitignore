@@ -1,10 +1,5 @@
 /target
 /data
-**/*.rs.bk
 Cargo.lock
+*.rs.bk
 .env
-archive/
-home/
-docs/*.yaml.bak.*
-docs/*_backup*
-home/

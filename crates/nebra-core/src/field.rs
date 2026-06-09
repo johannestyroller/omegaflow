@@ -13,25 +13,17 @@ pub struct Mass {
 }
 
 pub fn init() {
-    eprintln!("  init: loading...");
     let alm = Almanac::new("data/de440s.bsp")
         .and_then(|a| a.load("data/pck08.pca"));
-    match alm {
-        Ok(alm) => {
-            let ids: Vec<i32> = (0..1000)
-                .filter(|&id| {
-                    let frame = Frame::from_ephem_j2000(id);
-                    alm.frame_info(frame).ok().and_then(|f| f.mu_km3_s2).is_some()
-                })
-                .collect();
-            eprintln!("  init: {} bodies found", ids.len());
-            let _ = MASS_IDS.set(ids);
-            let _ = ALMANAC.set(alm);
-            eprintln!("  init: DONE");
-        }
-        Err(e) => {
-            eprintln!("  init FAILED: {:?}", e);
-        }
+    if let Ok(alm) = alm {
+        let ids: Vec<i32> = (0..1000)
+            .filter(|&id| {
+                let frame = Frame::from_ephem_j2000(id);
+                alm.frame_info(frame).ok().and_then(|f| f.mu_km3_s2).is_some()
+            })
+            .collect();
+        let _ = MASS_IDS.set(ids);
+        let _ = ALMANAC.set(alm);
     }
 }
 

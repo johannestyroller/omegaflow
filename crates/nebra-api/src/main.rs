@@ -99,7 +99,7 @@ async function fetchMasses(){
     const d=new Float32Array(b);
     massCount=d.length/4;
     device.queue.writeBuffer(maxMassBuf,0,d);
-    console.log('masses: '+massCount);
+
   }catch(e){console.log('fetch error',e);}
 }
 function render(){
