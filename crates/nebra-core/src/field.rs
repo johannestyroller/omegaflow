@@ -76,3 +76,4 @@ pub fn electromagnetism(_jd: f64, _pos: DVec3) -> (f64, DVec3) {
 pub fn weak_force(_jd: f64, _pos: DVec3) -> (f64, DVec3) {
     (0.0, DVec3::ZERO)
 }
+
