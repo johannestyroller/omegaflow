@@ -20,3 +20,5 @@ dependencies:
   in_cargo: [egm96, srtm_reader, geo, geographiclib-rs,
              world_magnetic_model, grib, netcdf-reader, hdf5-reader,
              fitsrs, cdshealpix, tobari, ionotrace]
+
+pipeline: jd -> masses_at(jd) -> 752 bytes -> GPU -> shader -> pixel
