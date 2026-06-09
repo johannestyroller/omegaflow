@@ -15,7 +15,7 @@ egm96 = "0.2"
 srtm_reader = "0.5"
 geo = "0.33"
 geographiclib-rs = "0.2"
-world_magnetic_model = "0.4"
+world_magnetic_model = { git = "https://github.com/johannestyroller/world_magnetic_model", branch = "expose-wmm-models" }
 grib = "0.10"
 netcdf-reader = "0.6"
 hdf5-reader = "0.6"
