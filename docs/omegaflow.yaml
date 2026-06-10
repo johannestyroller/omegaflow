@@ -1,5 +1,8 @@
 %YAML 1.1
 ---
+foundation: A = A
+axiom: Truth × Probability = Reality
+equation: Pos(t, x, y, z) = (GM/r²) * e^(-|Δt|) * e^(-v)
 universe: (t) ∞ Vec<Mass>, WmmData
 gravity: DE440s, 13 bodies, GM/dist²
 electromagnetism: WMM, dynamic N_MAX
@@ -7,7 +10,7 @@ weak_force: (0.0, ZERO)
 masses_at: t ∞ Vec<Mass>
 wmm_at: t ∞ WmmData
 pipeline: Server(t) ∞ Client(t, capacity) ∞ GPU ∞ eval_state ∞ pixel
-eval_state: for each pixel, omega += GM / dist²
+eval_state: for each pixel, Reality = Truth * e^(-|Δt|) * e^(-v)
 files:
   - crates/omegaflow-server/src/state.rs
   - crates/omegaflow-server/src/lib.rs

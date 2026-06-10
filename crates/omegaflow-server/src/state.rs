@@ -40,7 +40,7 @@ pub fn init() {
     }
 }
 
-pub fn masses_at(t: f64, cx: f64, cy: f64, cz: f64, scale: f64) -> Vec<Mass> {
+pub fn masses_at(t: f64, cx: f64, cy: f64, cz: f64, scale: f64, observer_tier: i32) -> Vec<Mass> {
     let Some(alm) = ALMANAC.get() else { return Vec::new() };
     let Some(ids) = MASS_IDS.get() else { return Vec::new() };
     let epoch = Epoch::from_tdb_seconds(t);
@@ -62,6 +62,10 @@ pub fn masses_at(t: f64, cx: f64, cy: f64, cz: f64, scale: f64) -> Vec<Mass> {
         out.push(Mass { pos, gm });
     }
     out.sort_by(|a, b| b.gm.partial_cmp(&a.gm).unwrap_or(std::cmp::Ordering::Equal));
+    
+    let max_masses = if observer_tier > 0 { 15 } else { 5 };
+    out.truncate(max_masses);
+    
     out
 }
 
@@ -91,24 +95,30 @@ pub fn wmm_at(t: f64) -> Option<WmmData> {
     let year = epoch.year();
     let day_of_year = epoch.day_of_year() as u16;
     let date = Date::from_ordinal_date(year, day_of_year).ok()?;
-    let (model, _) = select_models(date).ok()?;
-    let time_delta = (year as f32 - model.model_version as f32)
-        + (day_of_year as f32) / 365.25;
+    
+    let (model, _error_model) = select_models(date).ok()?;
+    
     let alm = ALMANAC.get()?;
     let earth_frame = Frame::from_ephem_j2000(3);
     let state = alm.translate(earth_frame, SSB_J2000, epoch, None).ok()?;
     let earth_pos = DVec3::new(state.radius_km.x * 1e3, state.radius_km.y * 1e3, state.radius_km.z * 1e3);
     
-    let n_max = (((8.0 * model.g_mfc.len() as f64 + 1.0).sqrt() - 1.0) / 2.0) as i32;
+    let n_max = (((8 * model.g_mfc.len() as i32 + 9) as f64).sqrt() as i32 - 3) / 2;
+    let g_mfc: Vec<f32> = model.g_mfc.iter().map(|&x| x as f32).collect();
+    let h_mfc: Vec<f32> = model.h_mfc.iter().map(|&x| x as f32).collect();
+    let g_svc: Vec<f32> = model.g_svc.iter().map(|&x| x as f32).collect();
+    let h_svc: Vec<f32> = model.h_svc.iter().map(|&x| x as f32).collect();
+    
+    let time_delta = ((year - 2020) as f32) + (day_of_year as f32 / 365.0);
     
     Some(WmmData {
         earth_pos,
         time_delta,
         n_max,
-        g_mfc: model.g_mfc.to_vec(),
-        h_mfc: model.h_mfc.to_vec(),
-        g_svc: model.g_svc.to_vec(),
-        h_svc: model.h_svc.to_vec(),
+        g_mfc,
+        h_mfc,
+        g_svc,
+        h_svc,
     })
 }
 
