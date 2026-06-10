@@ -15,4 +15,4 @@ glam = "0.33"
 anise = { git = "https://github.com/nyx-space/anise", branch = "master" }
 serde = { version = "1", features = ["derive"] }
 world_magnetic_model = { git = "https://github.com/johannestyroller/world_magnetic_model", branch = "expose-wmm-models" }
-wasm-bindgen = "0.2"
+

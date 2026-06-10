@@ -5,9 +5,12 @@ use anise::constants::frames::SSB_J2000;
 use hifitime::Epoch;
 use world_magnetic_model::wmm_models::select_models;
 use world_magnetic_model::time::Date;
+use std::fs::File;
+use std::io::Read;
 
 static ALMANAC: OnceLock<Almanac> = OnceLock::new();
 static MASS_IDS: OnceLock<Vec<i32>> = OnceLock::new();
+static HGT_DATA: OnceLock<Vec<i16>> = OnceLock::new();
 
 pub struct Mass {
     pub pos: DVec3,
@@ -26,6 +29,14 @@ pub fn init() {
             .collect();
         let _ = MASS_IDS.set(ids);
         let _ = ALMANAC.set(alm);
+    }
+    
+    if let Ok(mut f) = File::open("data/N47E011.hgt") {
+        let mut buf = Vec::new();
+        if f.read_to_end(&mut buf).ok() == Some(2884802) {
+            let data: Vec<i16> = buf.chunks_exact(2).map(|c| i16::from_be_bytes([c[0], c[1]])).collect();
+            let _ = HGT_DATA.set(data);
+        }
     }
 }
 
@@ -46,7 +57,20 @@ pub fn masses_at(t: f64) -> Vec<Mass> {
             gm,
         });
     }
+    out.sort_by(|a, b| b.gm.partial_cmp(&a.gm).unwrap_or(std::cmp::Ordering::Equal));
+    out.truncate(15);
     out
+}
+
+pub fn terrain_height(lat: f64, lon: f64) -> f32 {
+    let Some(data) = HGT_DATA.get() else { return 0.0 };
+    let lat0 = 47.0;
+    let lon0 = 11.0;
+    let x = ((lon - lon0) * 1200.0) as usize;
+    let y = ((lat0 + 1.0 - lat) * 1200.0) as usize;
+    if x >= 1201 || y >= 1201 { return 0.0; }
+    let val = data[y * 1201 + x];
+    if val == -32768 { 0.0 } else { val as f32 }
 }
 
 pub struct WmmData {
@@ -72,7 +96,7 @@ pub fn wmm_at(t: f64) -> Option<WmmData> {
     let state = alm.translate(earth_frame, SSB_J2000, epoch, None).ok()?;
     let earth_pos = DVec3::new(state.radius_km.x * 1e3, state.radius_km.y * 1e3, state.radius_km.z * 1e3);
     
-    let n_max = ((8.0 * model.g_mfc.len() as f64 + 1.0).sqrt() - 1.0) as i32 / 2;
+    let n_max = (((8.0 * model.g_mfc.len() as f64 + 1.0).sqrt() - 1.0) / 2.0) as i32;
     
     Some(WmmData {
         earth_pos,

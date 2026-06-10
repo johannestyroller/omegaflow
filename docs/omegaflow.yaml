@@ -16,5 +16,9 @@ files:
 
 dependencies:
   alive: [hifitime, glam, anise, serde, axum, tokio, world_magnetic_model]
-  in_cargo: []
-  
+
+roadmap:
+  topography: [egm96, srtm_reader, geo, geographiclib-rs]
+  weather: [grib, netcdf-reader, hdf5-reader, fitsrs]
+  ionosphere: [tobari, ionotrace]
+  astronomy: [cdshealpix]
