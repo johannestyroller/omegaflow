@@ -2,7 +2,10 @@ use axum::{Router, routing::get, http::header, response::IntoResponse, extract::
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-struct MassesReq { jd: f64 }
+struct MassesReq { jd: f64, cx: f64, cy: f64, cz: f64, scale: f64 }
+
+#[derive(Deserialize)]
+struct WmmReq { jd: f64 }
 
 #[derive(Deserialize)]
 struct TerrainReq { lat: f64, lon: f64, size: f64 }
@@ -17,7 +20,7 @@ async fn eval_state_wgsl() -> impl IntoResponse {
 
 async fn masses(Query(params): Query<MassesReq>) -> impl IntoResponse {
     let t = (params.jd - 2451545.0) * 86400.0;
-    let masses = omegaflow_server::masses_at(t);
+    let masses = omegaflow_server::masses_at(t, params.cx, params.cy, params.cz, params.scale);
     let data: Vec<f32> = masses.iter().flat_map(|m| {
         [m.pos.x as f32, m.pos.y as f32, m.pos.z as f32, m.gm as f32]
     }).collect();
@@ -25,7 +28,7 @@ async fn masses(Query(params): Query<MassesReq>) -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "application/octet-stream")], bytes)
 }
 
-async fn wmm(Query(params): Query<MassesReq>) -> impl IntoResponse {
+async fn wmm(Query(params): Query<WmmReq>) -> impl IntoResponse {
     let t = (params.jd - 2451545.0) * 86400.0;
     let Some(data) = omegaflow_server::wmm_at(t) else {
         return ([(header::CONTENT_TYPE, "application/octet-stream")], Vec::<u8>::new());
@@ -109,10 +112,10 @@ device.lost.then(info=>{document.body.innerText='GPU Lost: '+info.message;consol
 const ctx=canvas.getContext('webgpu');
 const fmt=navigator.gpu.getPreferredCanvasFormat();
 ctx.configure({device,format:fmt,alphaMode:'opaque'});
-canvas.width=Math.floor(window.innerWidth/2);
-canvas.height=Math.floor(window.innerHeight/2);
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
 let RX=canvas.width,RY=canvas.height;
-window.addEventListener('resize',()=>{canvas.width=Math.floor(window.innerWidth/2);canvas.height=Math.floor(window.innerHeight/2);RX=canvas.width;RY=canvas.height});
+window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;RX=canvas.width;RY=canvas.height});
 window.cx=0;window.cy=0;window.cz=0;window.scale=3e8;window.jd=2459945.0;
 let drag=false,lx=0,ly=0;
 canvas.addEventListener('mousedown',e=>{drag=true;lx=e.clientX;ly=e.clientY});
@@ -149,10 +152,9 @@ async function createPipe(nMax, tier) {
 let pipe = await createPipe(currentNMax, 0);
 if(!pipe) return;
 
-const massBuf=device.createBuffer({size:2048,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});
+const massBuf=device.createBuffer({size:4096,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});
 const vpBuf=device.createBuffer({size:32,usage:GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST});
 const wmmBuf=device.createBuffer({size:65536,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});
-
 let terrainTex = device.createTexture({size:[256,256],format:'r32float',usage:GPUTextureUsage.TEXTURE_BINDING|GPUTextureUsage.COPY_DST});
 
 let bg=device.createBindGroup({layout:bgl,entries:[
@@ -165,7 +167,7 @@ let massCount=0;
 
 async function fetchMasses(){
   try{
-    const r=await fetch('/masses?jd='+jd);
+    const r=await fetch(`/masses?jd=${jd}&cx=${cx}&cy=${cy}&cz=${cz}&scale=${scale}`);
     const b=await r.arrayBuffer();
     const d=new Float32Array(b);
     massCount=d.length/4;

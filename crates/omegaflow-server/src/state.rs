@@ -40,10 +40,11 @@ pub fn init() {
     }
 }
 
-pub fn masses_at(t: f64) -> Vec<Mass> {
+pub fn masses_at(t: f64, cx: f64, cy: f64, cz: f64, scale: f64) -> Vec<Mass> {
     let Some(alm) = ALMANAC.get() else { return Vec::new() };
     let Some(ids) = MASS_IDS.get() else { return Vec::new() };
     let epoch = Epoch::from_tdb_seconds(t);
+    let viewport_center = DVec3::new(cx, cy, cz);
     let mut out = Vec::new();
     for &id in ids {
         let frame = Frame::from_ephem_j2000(id);
@@ -52,13 +53,15 @@ pub fn masses_at(t: f64) -> Vec<Mass> {
             None => continue,
         };
         let Ok(state) = alm.translate(frame, SSB_J2000, epoch, None) else { continue };
-        out.push(Mass {
-            pos: DVec3::new(state.radius_km.x * 1e3, state.radius_km.y * 1e3, state.radius_km.z * 1e3),
-            gm,
-        });
+        let pos = DVec3::new(state.radius_km.x * 1e3, state.radius_km.y * 1e3, state.radius_km.z * 1e3);
+        
+        let dist = (pos - viewport_center).length();
+        let influence_radius = scale * 10.0; 
+        if dist > influence_radius && id != 10 { continue; } 
+        
+        out.push(Mass { pos, gm });
     }
     out.sort_by(|a, b| b.gm.partial_cmp(&a.gm).unwrap_or(std::cmp::Ordering::Equal));
-    out.truncate(15);
     out
 }
 

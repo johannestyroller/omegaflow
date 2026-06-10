@@ -46,12 +46,17 @@ fn eval_magnetic_state(pos: vec3f) -> vec3f {
     let omega = g_omega + length(B);
 
     let brightness = clamp(log(1.0 + omega / 9.81) / log(11.0), 0.0, 1.0);
-    let B_norm = clamp(length(B) / 65000.0, 0.0, 1.0);
     let g_norm = clamp(g_omega / 9.81, 0.0, 1.0);
+    var final_col = mix(vec3f(0.0, 0.1, 0.8), vec3f(1.0, 0.9, 0.0), g_norm * g_norm);
 
-    let grav_col = mix(vec3f(0.0, 0.1, 0.8), vec3f(1.0, 0.9, 0.0), g_norm * g_norm);
-    let mag_col = vec3f(B_norm, 0.0, B_norm * 0.7);
-    let final_col = mix(grav_col, mag_col, B_norm * 0.6);
+    let earth_center = vec3f(wmm[0], wmm[1], wmm[2]);
+    let earth_radius = 6378137.0;
+    let dist_from_earth = length(pos - earth_center);
+
+    if (dist_from_earth < earth_radius * 1.02) {
+        let edge = smoothstep(earth_radius, earth_radius * 1.02, dist_from_earth);
+        final_col = mix(vec3f(0.0, 0.4, 1.0), final_col, edge);
+    }
 
     return vec4f(final_col * brightness, 1.0);
 }
