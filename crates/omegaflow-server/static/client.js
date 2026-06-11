@@ -5,7 +5,7 @@ export const S={
     timeMultiplier:1.0,
     lastMoveTime:0,
     dwellTime:0,
-    observerCapacity:0,
+    capacity:0,
     massCount:0,
     deviceAccX:0,deviceAccY:0,deviceAccZ:0,
     deviceMagX:0,deviceMagY:0,deviceMagZ:0,
@@ -15,7 +15,7 @@ export const S={
     touches:{},initialPinchDist:0,initialScale:0,
     initialAlpha:null,initialBeta:null,
     videoElement:null,
-    observerAwake:false,
+    awake:false,
     prev_cx:0,prev_cy:0,prev_cz:0,
     lastRenderTime:0,
     egmLoaded:false,
@@ -38,11 +38,11 @@ export function syncHere(){
 }
 
 export function buildVp(){
-    return new Float32Array([S.cx,S.cy,S.cz,S.scale,0,0,S.massCount,0,S.dwellTime,0,S.ambientLux,S.observerCapacity,S.deviceAccX,S.deviceAccY,S.deviceAccZ,0,S.deviceMagX,S.deviceMagY,S.deviceMagZ,0,S.yaw,S.pitch,0,0,S.micVolume,S.cameraLux,0,0,S.obsLat,S.obsLon,S.obsAlt,S.camRot]);
+    return new Float32Array([S.cx,S.cy,S.cz,S.scale,0,0,S.massCount,0,S.dwellTime,0,S.ambientLux,S.capacity,S.deviceAccX,S.deviceAccY,S.deviceAccZ,0,S.deviceMagX,S.deviceMagY,S.deviceMagZ,0,S.yaw,S.pitch,0,0,S.micVolume,S.cameraLux,0,0,S.obsLat,S.obsLon,S.obsAlt,S.camRot]);
 }
 
 export function updateCapacity(dt){
-    S.observerCapacity=1.0/(1.0+dt/16.0);
+    S.capacity=1.0/(1.0+dt/16.0);
     let tsm=Date.now()-S.lastMoveTime;
     S.dwellTime=clamp(tsm/20,0,100);
     S.jd+=(dt/1000/86400)*S.timeMultiplier;
@@ -53,9 +53,9 @@ export async function fetchStream(upload){
     if(S.streaming)return;
     S.streaming=true;
     let fj=S.jd+(0.01*S.timeMultiplier);
-    let mg=1e-8/Math.max(S.observerCapacity,0.01);
+    let mg=1e-8/Math.max(S.capacity,0.01);
     try{
-        const r=await fetch(`/stream?jd=${fj}&cx=${S.cx}&cy=${S.cy}&cz=${S.cz}&scale=${S.scale}&min_g=${mg}&n_max=${Math.floor(1+S.observerCapacity*132)+5}&lat0=${Math.floor(S.obsLat)}&lon0=${Math.floor(S.obsLon)}`);
+        const r=await fetch(`/stream?jd=${fj}&cx=${S.cx}&cy=${S.cy}&cz=${S.cz}&scale=${S.scale}&min_g=${mg}&n_max=${Math.floor(1+S.capacity*132)+5}&lat0=${Math.floor(S.obsLat)}&lon0=${Math.floor(S.obsLon)}`);
         const b=await r.arrayBuffer();
         if(b.byteLength>=16){
             const v=new DataView(b);
@@ -75,7 +75,7 @@ export async function fetchTime(){
 }
 
 export async function awaken(){
-    if(S.observerAwake)return;S.observerAwake=true;
+    if(S.awake)return;S.awake=true;
     try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const actx=new AudioContext();const src=actx.createMediaStreamSource(stream);const an=actx.createAnalyser();src.connect(an);const d=new Uint8Array(an.frequencyBinCount);setInterval(()=>{an.getByteTimeDomainData(d);let s=0;for(let i=0;i<d.length;i++){let v=(d[i]-128)/128;s+=v*v;}S.micVolume=Math.sqrt(s/d.length);},50);}catch(e){}
     try{const stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'environment'}});S.videoElement=document.createElement('video');S.videoElement.srcObject=stream;S.videoElement.play();}catch(e){}
     if('geolocation' in navigator)navigator.geolocation.watchPosition(p=>{S.obsLat=p.coords.latitude;S.obsLon=p.coords.longitude;S.obsAlt=p.coords.altitude||0;},e=>{},{enableHighAccuracy:true,maximumAge:0});

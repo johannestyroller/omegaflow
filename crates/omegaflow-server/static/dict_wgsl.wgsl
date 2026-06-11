@@ -34,12 +34,12 @@ struct V { @builtin(position) p: vec4f, @location(0) u: vec2f }
     return o;
 }
 
-LOGIC
+STATE
 
-OBSERVER
+PERCEPTION
 
 @fragment fn fs(i: V) -> @location(0) vec4f {
-    let col = eval_observer(i.u, vp.res_count.xy, vp.center_scale.w, vp.center_scale.xyz,
+    let perception = eval_perception(i.u, vp.res_count.xy, vp.center_scale.w, vp.center_scale.xyz,
         vp.rotation.xy, vp.observer_state, vp.device_accel, vp.device_mag, vp.device_local, vp.device_geo);
-    return vec4f(col, 1.0);
+    return vec4f(perception, 1.0);
 }

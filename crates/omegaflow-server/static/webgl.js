@@ -33,7 +33,7 @@ const upload={
 function render(){
     try{
         if(S.videoElement&&S.videoElement.readyState>=S.videoElement.HAVE_CURRENT_DATA){gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,camTex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,640,480,gl.RGBA,gl.UNSIGNED_BYTE,S.videoElement);}
-        if(!S.observerAwake){gl.clearColor(0,0,0.05,1);gl.clear(gl.COLOR_BUFFER_BIT);return;}
+        if(!S.awake){gl.clearColor(0,0,0.05,1);gl.clear(gl.COLOR_BUFFER_BIT);return;}
         const now=performance.now();const dt=now-S.lastRenderTime;S.lastRenderTime=now;
         updateCapacity(dt);
         gl.bindBuffer(gl.UNIFORM_BUFFER,vpBuf);gl.bufferData(gl.UNIFORM_BUFFER,buildVp(),gl.DYNAMIC_DRAW);

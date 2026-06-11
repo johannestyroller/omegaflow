@@ -34,47 +34,45 @@ struct state {
     vec3 earth_center;
 };
 
-state eval_universe(vec3 pos, float capacity) {
-    state s;
-    s.pos = pos;
-    s.earth_center = vec3(WMM(0), WMM(1), WMM(2));
-    vec3 r_vec = pos - s.earth_center;
-    s.dist_earth = length(r_vec);
-    s.r_hat = r_vec / max(s.dist_earth, 1.0);
-    s.sin_lat = s.r_hat.z;
-    s.cos_lat = sqrt(1.0 - s.sin_lat * s.sin_lat);
-    s.lon_rad = atan(s.r_hat.y, s.r_hat.x);
+state eval_state(vec3 pos, float capacity) {
+    state st;
+    st.pos = pos;
+    st.earth_center = vec3(WMM(0), WMM(1), WMM(2));
+    vec3 r_vec = pos - st.earth_center;
+    st.dist_earth = length(r_vec);
+    st.r_hat = r_vec / max(st.dist_earth, 1.0);
+    st.sin_lat = st.r_hat.z;
+    st.cos_lat = sqrt(1.0 - st.sin_lat * st.sin_lat);
+    st.lon_rad = atan(st.r_hat.y, st.r_hat.x);
 
-    float mass_limit_f = 5.0 + capacity * 251.0;
-    int mass_limit = int(mass_limit_f);
-    float mass_fade = 1.0 - fract(mass_limit_f);
-    s.acc_gravity = vec3(0.0);
+    int mass_limit = int(capacity * 256.0);
+    float mass_fade = 1.0 - fract(capacity * 256.0);
+    st.acc_gravity = vec3(0.0);
     for (int i = 0; i < mass_limit; i++) {
         vec4 m = MASS(i);
         vec3 r = m.xyz - pos;
         float r3 = max(dot(r, r) * length(r), 1.0);
         vec3 effect = m.w * r / r3;
         if (i == mass_limit - 1 && mass_limit > 0) {
-            s.acc_gravity += effect * mass_fade;
+            st.acc_gravity += effect * mass_fade;
         } else {
-            s.acc_gravity += effect;
+            st.acc_gravity += effect;
         }
     }
 
-    float mag_limit_f = 1.0 + capacity * 132.0;
-    int mag_limit = int(mag_limit_f);
-    float mag_fade = 1.0 - fract(mag_limit_f);
-    float sin_theta = s.cos_lat;
-    float cos_theta = s.sin_lat;
+    int mag_limit = int(capacity * 133.0);
+    float mag_fade = 1.0 - fract(capacity * 133.0);
+    float sin_theta = st.cos_lat;
+    float cos_theta = st.sin_lat;
     float inv_sin_theta = 1.0 / max(sin_theta, 1e-6);
     float time_delta = WMM(3);
-    float a_over_r = 6378137.0 / s.dist_earth;
+    float a_over_r = 6378137.0 / st.dist_earth;
 
     if (mag_limit <= 12) {
         float B_r = 0.0; float B_t = 0.0; float B_p = 0.0;
         for (int mm = 0; mm <= mag_limit; mm++) {
-            float cml = cos(float(mm) * s.lon_rad);
-            float sml = sin(float(mm) * s.lon_rad);
+            float cml = cos(float(mm) * st.lon_rad);
+            float sml = sin(float(mm) * st.lon_rad);
             float p_pp = 0.0; float p_pr = 0.0; float p_cu = 0.0;
             float arn = pow(a_over_r, float(mm + 2));
             for (int n = mm; n <= mag_limit; n++) {
@@ -100,16 +98,16 @@ state eval_universe(vec3 pos, float capacity) {
                 arn *= a_over_r;
             }
         }
-        s.B_field = vec3(
-            B_r*s.sin_lat*cos(s.lon_rad) + B_t*s.cos_lat*cos(s.lon_rad) - B_p*sin(s.lon_rad),
-            B_r*s.sin_lat*sin(s.lon_rad) + B_t*s.cos_lat*sin(s.lon_rad) + B_p*cos(s.lon_rad),
-            B_r*s.cos_lat - B_t*s.sin_lat
+        st.B_field = vec3(
+            B_r*st.sin_lat*cos(st.lon_rad) + B_t*st.cos_lat*cos(st.lon_rad) - B_p*sin(st.lon_rad),
+            B_r*st.sin_lat*sin(st.lon_rad) + B_t*st.cos_lat*sin(st.lon_rad) + B_p*cos(st.lon_rad),
+            B_r*st.cos_lat - B_t*st.sin_lat
         );
     } else {
         vec2 B_r = vec2(0.0); vec2 B_t = vec2(0.0); vec2 B_p = vec2(0.0);
         for (int mm = 0; mm <= mag_limit; mm++) {
-            float cml = cos(float(mm) * s.lon_rad);
-            float sml = sin(float(mm) * s.lon_rad);
+            float cml = cos(float(mm) * st.lon_rad);
+            float sml = sin(float(mm) * st.lon_rad);
             vec2 p_pp = vec2(0.0); vec2 p_pr = vec2(0.0); vec2 p_cu = vec2(0.0);
             vec2 arn = vec2(pow(a_over_r, float(mm+2)), 0.0);
             for (int n = mm; n <= mag_limit; n++) {
@@ -135,20 +133,20 @@ state eval_universe(vec3 pos, float capacity) {
                 arn = df64_scale(arn, a_over_r);
             }
         }
-        s.B_field = vec3(
-            B_r.x*s.sin_lat*cos(s.lon_rad) + B_t.x*s.cos_lat*cos(s.lon_rad) - B_p.x*sin(s.lon_rad),
-            B_r.x*s.sin_lat*sin(s.lon_rad) + B_t.x*s.cos_lat*sin(s.lon_rad) + B_p.x*cos(s.lon_rad),
-            B_r.x*s.cos_lat - B_t.x*s.sin_lat
+        st.B_field = vec3(
+            B_r.x*st.sin_lat*cos(st.lon_rad) + B_t.x*st.cos_lat*cos(st.lon_rad) - B_p.x*sin(st.lon_rad),
+            B_r.x*st.sin_lat*sin(st.lon_rad) + B_t.x*st.cos_lat*sin(st.lon_rad) + B_p.x*cos(st.lon_rad),
+            B_r.x*st.cos_lat - B_t.x*st.sin_lat
         );
     }
 
     float earth_radius = 6378137.0;
-    float terrain_fade = smoothstep(earth_radius * 1.5, earth_radius, s.dist_earth);
+    float terrain_fade = smoothstep(earth_radius * 1.3, earth_radius, st.dist_earth);
     if (terrain_fade <= 0.0) {
-        s.terrain_h = 0.0;
+        st.terrain_h = 0.0;
     } else {
-        float lat = asin(s.r_hat.z);
-        float lon = atan(s.r_hat.y, s.r_hat.x);
+        float lat = asin(st.r_hat.z);
+        float lon = atan(st.r_hat.y, st.r_hat.x);
         float x = fract(lon * 57.2957795) * 1200.0;
         float y = (1.0 - fract(lat * 57.2957795)) * 1200.0;
         int x0 = int(clamp(floor(x), 0.0, 1199.0));
@@ -157,8 +155,8 @@ state eval_universe(vec3 pos, float capacity) {
         float h = TERRAIN(x0,y0)*(1.0-fx)*(1.0-fy) + TERRAIN(min(x0+1,1200),y0)*fx*(1.0-fy)
                 + TERRAIN(x0,min(y0+1,1200))*(1.0-fx)*fy + TERRAIN(min(x0+1,1200),min(y0+1,1200))*fx*fy;
         float undulation = EGM96((lon*57.2957795+180.0)*0.0027777777, (lat*57.2957795+90.0)*0.0055555555);
-        s.terrain_h = (h + undulation) * terrain_fade;
+        st.terrain_h = (h + undulation) * terrain_fade;
     }
 
-    return s;
+    return st;
 }

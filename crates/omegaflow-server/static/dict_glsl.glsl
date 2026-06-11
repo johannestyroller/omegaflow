@@ -29,12 +29,12 @@ uniform sampler2D cameraTex;
 layout(location=0) out vec4 fragColor;
 layout(location=0) in vec2 vUv;
 
-LOGIC
+STATE
 
-OBSERVER
+PERCEPTION
 
 void main() {
-    vec3 col = eval_observer(vUv, res_count.xy, center_scale.w, center_scale.xyz,
+    vec3 perception = eval_perception(vUv, res_count.xy, center_scale.w, center_scale.xyz,
         rotation.xy, observer_state, device_accel, device_mag, device_local, device_geo);
-    fragColor = vec4(col, 1.0);
+    fragColor = vec4(perception, 1.0);
 }
