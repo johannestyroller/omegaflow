@@ -1,16 +1,14 @@
-# Omegaflow
+omegaflow
 
-Truth × Probability = Reality
+state(t, x, y, z) = what is
+perception(state, observer) = what arrives
 
-**Pos(t, x, y, z) = (GM/r²) * e^(-|Δt|) * e^(-v)**
+every pixel evaluates its own state from real ephemeris data (DE440s, WMM).
+the observer's capacity limits what arrives.
+one source of truth. every observer speaks its own language.
 
-A real-time physics measurement and evaluation engine.
+rust. state. perception.
 
-Every pixel evaluates its own gravitational and magnetic state from real ephemeris data (DE440s, WMM). Time travel diffuses the field. Movement blurs the certainty. The observer collapses the wave function.
-
-Built with Rust, WebGPU, and A = A.
-
-## License
-
+license
 CC BY-NC-SA 4.0
 
