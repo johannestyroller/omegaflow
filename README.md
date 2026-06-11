@@ -1,6 +1,7 @@
 omegaflow
 
-state(t, x, y, z) = what is\n
+state(t, x, y, z) = what is
+
 perception(state, observer) = what arrives
 
 every pixel evaluates its own state from real ephemeris data (DE440s, WMM).
