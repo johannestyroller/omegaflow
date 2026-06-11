@@ -15,12 +15,42 @@ async fn index() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "text/html")], HTML)
 }
 
+fn glsl_to_wgsl(glsl: &str) -> String {
+    let mut s = glsl.to_string();
+    s = s.replace("float ", "f32 ");
+    s = s.replace("float(", "f32(");
+    s = s.replace("vec2 ", "vec2f ");
+    s = s.replace("vec2(", "vec2f(");
+    s = s.replace("vec3 ", "vec3f ");
+    s = s.replace("vec3(", "vec3f(");
+    s = s.replace("vec4 ", "vec4f ");
+    s = s.replace("vec4(", "vec4f(");
+    s = s.replace("int ", "i32 ");
+    s = s.replace("int(", "i32(");
+    s = s.replace("uint(", "u32(");
+    s = s.replace("const ", "let ");
+    s
+}
+
 async fn eval_state_wgsl() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "text/wgsl")], EVAL_STATE_SHADER)
+    let logic = glsl_to_wgsl(EVAL_LOGIC);
+    let shader = DICT_WGSL.replace("LOGIC", &logic);
+    ([(header::CONTENT_TYPE, "text/wgsl")], shader)
 }
 
 async fn eval_state_glsl() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "text/glsl")], EVAL_STATE_GLSL)
+    let vertex = r#"#version 300 es
+precision highp float;
+layout(location=0) out vec2 vUv;
+const vec2 pos[3] = vec2[3](vec2(-1,-1), vec2(3,-1), vec2(-1,3));
+void main() {
+    vec2 p = pos[gl_VertexID];
+    vUv = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+    gl_Position = vec4(p, 0.0, 1.0);
+}"#;
+    let dict = DICT_GLSL.replace("LOGIC", EVAL_LOGIC);
+    let fragment = format!("{}\n{}", vertex, dict);
+    ([(header::CONTENT_TYPE, "text/glsl")], fragment)
 }
 
 async fn universe_stream(Query(params): Query<StreamReq>) -> impl IntoResponse {
@@ -104,8 +134,9 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-static EVAL_STATE_SHADER: &str = include_str!("../static/eval_state.wgsl");
-static EVAL_STATE_GLSL: &str = include_str!("../static/eval_state.glsl");
+static EVAL_LOGIC: &str = include_str!("../static/eval_logic.glsl");
+static DICT_GLSL: &str = include_str!("../static/dict_glsl.glsl");
+static DICT_WGSL: &str = include_str!("../static/dict_wgsl.wgsl");
 static MANIFEST: &str = include_str!("../static/manifest.json");
 static SW: &str = include_str!("../static/sw.js");
 

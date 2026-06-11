@@ -1,39 +1,3 @@
-// --- VERTEX ---
-#version 300 es
-precision highp float;
-layout(location=0) out vec2 vUv;
-const vec2 pos[3] = vec2[3](vec2(-1,-1), vec2(3,-1), vec2(-1,3));
-void main() {
-    vec2 p = pos[gl_VertexID];
-    vUv = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
-    gl_Position = vec4(p, 0.0, 1.0);
-}
-
-// --- FRAGMENT ---
-#version 300 es
-precision highp float;
-precision highp int;
-
-layout(std140) uniform VP {
-    vec4 center_scale;
-    vec4 res_count;
-    vec4 observer_state;
-    vec4 device_accel;
-    vec4 device_mag;
-    vec4 rotation;
-    vec4 device_local;
-    vec4 device_geo;
-};
-
-uniform sampler2D massTex;
-uniform sampler2D wmmTex;
-uniform sampler2D terrainTex;
-uniform sampler2D egm96Tex;
-uniform sampler2D cameraTex;
-
-layout(location=0) out vec4 fragColor;
-layout(location=0) in vec2 vUv;
-
 vec2 df64_add(vec2 a, vec2 b) {
     float s = a.x + b.x;
     float v = s - a.x;
@@ -63,7 +27,7 @@ float eval_gravity(vec3 pos, float capacity) {
     float limit_fade = 1.0 - fract(mass_limit_f);
     vec3 acc = vec3(0.0);
     for (int i = 0; i < current_mass_limit; i++) {
-        vec4 m = texelFetch(massTex, ivec2(i, 0), 0);
+        vec4 m = MASS(i);
         vec3 r_vec = m.xyz - pos;
         float r = length(r_vec);
         float r_cubed = max(r * r * r, 1.0);
@@ -74,13 +38,11 @@ float eval_gravity(vec3 pos, float capacity) {
             acc += effect;
         }
     }
-    acc += device_accel.xyz;
+    acc += VP_FIELD(device_accel, xyz);
     return length(acc);
 }
 
-float wmm_at(int idx) {
-    return texelFetch(wmmTex, ivec2(idx, 0), 0).r;
-}
+float wmm_at(int idx) { return WMM(idx); }
 
 vec3 eval_magnetic(vec3 pos, vec3 earth_center, float sin_lat, float cos_lat, float lon_rad, float capacity) {
     vec3 r_vec = pos - earth_center;
@@ -197,10 +159,8 @@ float eval_terrain(vec3 pos, vec3 earth_center, vec3 r_hat, float dist) {
     float lat = asin(r_hat.z);
     float lon = atan(r_hat.y, r_hat.x);
 
-    float lat0_deg = floor(lat * 57.2957795);
-    float lon0_deg = floor(lon * 57.2957795);
-    float local_lat = (lat * 57.2957795) - lat0_deg;
-    float local_lon = (lon * 57.2957795) - lon0_deg;
+    float local_lat = fract(lat * 57.2957795);
+    float local_lon = fract(lon * 57.2957795);
 
     float x = local_lon * 1200.0;
     float y = (1.0 - local_lat) * 1200.0;
@@ -213,40 +173,34 @@ float eval_terrain(vec3 pos, vec3 earth_center, vec3 r_hat, float dist) {
     float fx = x - float(x0);
     float fy = y - float(y0);
 
-    float h00 = texelFetch(terrainTex, ivec2(x0, y0), 0).r;
-    float h10 = texelFetch(terrainTex, ivec2(x1, y0), 0).r;
-    float h01 = texelFetch(terrainTex, ivec2(x0, y1), 0).r;
-    float h11 = texelFetch(terrainTex, ivec2(x1, y1), 0).r;
+    float h00 = TERRAIN(x0, y0);
+    float h10 = TERRAIN(x1, y0);
+    float h01 = TERRAIN(x0, y1);
+    float h11 = TERRAIN(x1, y1);
 
     float h = h00*(1.0-fx)*(1.0-fy) + h10*fx*(1.0-fy) + h01*(1.0-fx)*fy + h11*fx*fy;
 
     float egm_u = (lon * 57.2957795 + 180.0) * 0.0027777777;
     float egm_v = (lat * 57.2957795 + 90.0) * 0.0055555555;
-    float undulation = texture(egm96Tex, vec2(egm_u, egm_v)).r;
+    float undulation = EGM96(egm_u, egm_v);
 
     return (h + undulation) * terrain_fade;
 }
 
-void main() {
-    float w = res_count.x;
-    float h = res_count.y;
-    float scale = center_scale.w;
+vec3 eval_frame(vec2 uv, vec2 res, float scale, vec3 center,
+    vec2 rotation, vec4 obs, vec4 accel, vec4 mag, vec4 local, vec4 geo) {
     float yaw = rotation.x;
     float pitch = rotation.y;
-    float acoustic_pressure = device_local.x;
-    float local_lux = device_local.y;
-    float temporal_certainty = device_local.z;
-    float locality_certainty = device_local.w;
-    float capacity = observer_state.w;
+    float capacity = obs.w;
 
     float cosY = cos(yaw); float sinY = sin(yaw);
     float cosP = cos(pitch); float sinP = sin(pitch);
 
-    vec3 offset = vec3((vUv.x - 0.5) * w * scale, (vUv.y - 0.5) * h * scale, 0.0);
+    vec3 offset = vec3((uv.x - 0.5) * res.x * scale, (uv.y - 0.5) * res.y * scale, 0.0);
     vec3 ry = vec3(offset.x*cosY + offset.z*sinY, offset.y, -offset.x*sinY + offset.z*cosY);
     vec3 rotated = vec3(ry.x, ry.y*cosP - ry.z*sinP, ry.y*sinP + ry.z*cosP);
 
-    vec3 pos = center_scale.xyz + rotated;
+    vec3 pos = center + rotated;
 
     vec3 earth_center = vec3(wmm_at(0), wmm_at(1), wmm_at(2));
     vec3 r_vec = pos - earth_center;
@@ -257,18 +211,18 @@ void main() {
     float lon_rad = atan(r_hat.y, r_hat.x);
 
     vec3 noise = vec3(sin(pos.x*12.9898+pos.y*78.233), cos(pos.y*43.758+pos.z*39.346), sin(pos.z*23.456+pos.x*93.138));
-    float total_disturbance = observer_state.y + acoustic_pressure * 10.0 + (1.0-temporal_certainty) * 5.0 + (1.0-locality_certainty) * 5.0;
+    float total_disturbance = obs.y + local.x * 10.0 + (1.0-local.z) * 5.0 + (1.0-local.w) * 5.0;
     vec3 noisy_pos = pos + noise * total_disturbance * scale * 0.01;
 
     float g_omega = eval_gravity(noisy_pos, capacity);
     vec3 B_universe = eval_magnetic(noisy_pos, earth_center, sin_lat, cos_lat, lon_rad, capacity);
-    vec3 B_local = device_mag.xyz;
+    vec3 B_local = mag.xyz;
     float total_B = length(B_universe + B_local * 1e-5);
 
-    float total_lux = observer_state.z + local_lux * 100.0;
+    float total_lux = obs.z + local.y * 100.0;
     float omega = max(0.0, g_omega - total_lux * 0.001);
 
-    float certainty = temporal_certainty * locality_certainty;
+    float certainty = local.z * local.w;
     float luxComp = 1.0 / (1.0 + total_lux * 0.0001);
 
     float g_norm = clamp(omega / 9.81, 0.0, 10.0);
@@ -292,12 +246,12 @@ void main() {
     vec3 atmo_col = vec3(0.1, 0.3, 0.8);
     float atmo_alpha = earth_atmo * capacity * certainty;
 
-    int cam_rot = int(device_geo.w);
-    vec2 cam_uv = vec2(vUv.x, 1.0 - vUv.y);
-    if (cam_rot == 1) cam_uv = vec2(1.0 - vUv.y, vUv.x);
-    else if (cam_rot == 2) cam_uv = vec2(1.0 - vUv.x, vUv.y);
-    else if (cam_rot == 3) cam_uv = vec2(vUv.y, 1.0 - vUv.x);
-    vec3 cam_sample = texture(cameraTex, cam_uv).rgb;
+    int cam_rot = int(geo.w);
+    vec2 cam_uv = vec2(uv.x, 1.0 - uv.y);
+    if (cam_rot == 1) cam_uv = vec2(1.0 - uv.y, uv.x);
+    else if (cam_rot == 2) cam_uv = vec2(1.0 - uv.x, uv.y);
+    else if (cam_rot == 3) cam_uv = vec2(uv.y, 1.0 - uv.x);
+    vec3 cam_sample = CAMERA(cam_uv);
 
     vec3 cam_color = cam_sample;
     float cam_lum = dot(cam_sample, vec3(0.299, 0.587, 0.114));
@@ -305,5 +259,5 @@ void main() {
 
     float cam_alpha = (1.0 - gravity_alpha - atmo_alpha) * certainty;
 
-    fragColor = vec4(cam_color * cam_alpha + gravity_col * gravity_alpha + atmo_col * atmo_alpha + mag_glow, 1.0);
+    return cam_color * cam_alpha + gravity_col * gravity_alpha + atmo_col * atmo_alpha + mag_glow;
 }
