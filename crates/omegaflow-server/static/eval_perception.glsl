@@ -38,11 +38,11 @@ vec3 eval_perception(vec2 uv, vec2 res, float scale, vec3 center,
     else if (cam_rot == 3) cam_uv = vec2(uv.y, 1.0 - uv.x);
     vec3 cam = CAMERA(cam_uv);
 
-    float gf = g_energy * capacity * certainty;
+    float g_perception = g_energy * capacity * certainty;
     vec3 gravity = vec3(
-        gf,
-        gf * 0.4 * (1.0 - gf),
-        (1.0 - gf * 0.6) * gf
+        g_perception,
+        g_perception * 0.4 * (1.0 - g_perception),
+        (1.0 - g_perception * 0.6) * g_perception
     );
 
     vec3 magnetic = B / max(b, 1e-10) * b_energy * capacity * certainty;
