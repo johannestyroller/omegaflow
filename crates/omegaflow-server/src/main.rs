@@ -19,6 +19,10 @@ async fn eval_state_wgsl() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "text/wgsl")], EVAL_STATE_SHADER)
 }
 
+async fn eval_state_glsl() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "text/glsl")], EVAL_STATE_GLSL)
+}
+
 async fn universe_stream(Query(params): Query<StreamReq>) -> impl IntoResponse {
     let t = (params.jd - 2451545.0) * 86400.0;
     let viewport_center = glam::DVec3::new(params.cx, params.cy, params.cz);
@@ -90,6 +94,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/eval_state.wgsl", get(eval_state_wgsl))
+        .route("/eval_state.glsl", get(eval_state_glsl))
         .route("/stream", get(universe_stream))
         .route("/time", get(time))
         .route("/manifest.json", get(manifest))
@@ -100,6 +105,7 @@ async fn main() {
 }
 
 static EVAL_STATE_SHADER: &str = include_str!("../static/eval_state.wgsl");
+static EVAL_STATE_GLSL: &str = include_str!("../static/eval_state.glsl");
 static MANIFEST: &str = include_str!("../static/manifest.json");
 static SW: &str = include_str!("../static/sw.js");
 
@@ -119,7 +125,7 @@ function showError(msg) { if(errorDiv){errorDiv.style.display='block'; errorDiv.
 const canvas=document.getElementById('c');
 canvas.focus();
 const adapter=await navigator.gpu.requestAdapter();
-if(!adapter){ showError('No WebGPU Adapter.'); return; }
+if(adapter){
 const device=await adapter.requestDevice();
 if(!device){ showError('No WebGPU Device.'); return; }
 device.lost.then(info=>{document.body.innerText='GPU Lost: '+info.message;console.error(info)});
@@ -428,6 +434,97 @@ setInterval(fetchUniverse, STREAM_INTERVAL);
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 if(splash) splash.style.display='none';
 loop();
+} else {
+const gl=canvas.getContext('webgl2');
+if(!gl){showError('No WebGPU or WebGL2.');return;}
+
+const shaderResp=await fetch('/eval_state.glsl');
+const glslSrc=await shaderResp.text();
+const vsSrc=glslSrc.substring(0,glslSrc.indexOf('// --- FRAGMENT'));
+const fsSrc=glslSrc.substring(glslSrc.indexOf('// --- FRAGMENT'));
+
+function compileShader(src,type){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));return null;}return s;}
+const vs=compileShader(vsSrc,gl.VERTEX_SHADER);
+const fs=compileShader(fsSrc,gl.FRAGMENT_SHADER);
+const prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){showError('GLSL link: '+gl.getProgramInfoLog(prog));return;}
+gl.useProgram(prog);
+
+const vpLoc=gl.getUniformBlockIndex(prog,'VP');
+gl.uniformBlockBinding(prog,vpLoc,0);
+const vpBuf=gl.createBuffer();
+gl.bindBufferBase(gl.UNIFORM_BUFFER,0,vpBuf);
+
+function makeTex(unit,w,h,internal,fmt,type){
+    const t=gl.createTexture();gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D,0,internal,w,h,0,fmt,type,null);
+    gl.uniform1i(gl.getUniformLocation(prog,['massTex','wmmTex','terrainTex','egm96Tex','cameraTex'][unit]),unit);
+    return t;
+}
+const massTex=makeTex(0,4096,1,gl.RGBA32F,gl.RGBA,gl.FLOAT);
+const wmmTex=makeTex(1,4096,1,gl.RGBA32F,gl.RGBA,gl.FLOAT);
+const terrainTex=makeTex(2,1201,1201,gl.R32F,gl.RED,gl.FLOAT);
+const egm96Tex=makeTex(3,1440,721,gl.R32F,gl.RED,gl.FLOAT);
+const camTex=makeTex(4,640,480,gl.RGBA,gl.UNSIGNED_BYTE);
+
+const vao=gl.createVertexArray();gl.bindVertexArray(vao);
+
+gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+
+async function fetchGL(){
+    let now=Date.now();if(now-lastStreamTime<STREAM_INTERVAL)return;lastStreamTime=now;
+    let futureJd=jd+(0.01*timeMultiplier);
+    let minG=1e-8/Math.max(observerCapacity,0.01);
+    try{
+        const r=await fetch(`/stream?jd=${futureJd}&cx=${cx}&cy=${cy}&cz=${cz}&scale=${scale}&min_g=${minG}&n_max=${Math.floor(1+observerCapacity*132)+5}&lat0=${Math.floor(obsLat)}&lon0=${Math.floor(obsLon)}`);
+        const b=await r.arrayBuffer();if(b.byteLength<16)return;
+        const v=new DataView(b);
+        const ml=v.getUint32(0,true),wl=v.getUint32(4,true),tl=v.getUint32(8,true),el=v.getUint32(12,true);
+        let off=16;
+        if(ml>0){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,massTex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,ml/16,1,gl.RGBA,gl.FLOAT,new Float32Array(b,off,ml/4));massCount=ml/16;off+=ml;}
+        if(wl>0){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,wmmTex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,wl/16,1,gl.RGBA,gl.FLOAT,new Float32Array(b,off,wl/4));off+=wl;}
+        if(tl>0&&!egmLoaded){gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,terrainTex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,1201,1201,gl.RED,gl.FLOAT,new Float32Array(b,off,tl/4));off+=tl;}
+        if(el>0&&!egmLoaded){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,egm96Tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,1440,721,gl.RED,gl.FLOAT,new Float32Array(b,off,el/4));egmLoaded=true;}
+    }catch(e){console.error(e);}
+}
+
+function renderGL(){
+    try{
+        if(videoElement&&videoElement.readyState>=videoElement.HAVE_CURRENT_DATA){
+            gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,camTex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,640,480,gl.RGBA,gl.UNSIGNED_BYTE,videoElement);
+        }
+        if(!observerAwake){gl.clearColor(0,0,0.05,1);gl.clear(gl.COLOR_BUFFER_BIT);return;}
+
+        let nowTime=performance.now();let dtMs=nowTime-lastRenderTime;lastRenderTime=nowTime;
+        observerCapacity+=(1.0-clamp((dtMs-TARGET_FRAME_MS)/TARGET_FRAME_MS,0,1)-observerCapacity)*smoothFactor;
+        const timeSinceMove=Date.now()-lastMoveTime;
+        let motion=Math.sqrt(deviceAccX**2+deviceAccY**2+deviceAccZ**2);
+        let rawDwell=clamp(timeSinceMove/2000,0,1);dwellTime=rawDwell*100;
+        let targetCap=Math.max(0.1,1.0-(motion/20))*(0.1+0.9*rawDwell);
+        smoothedCapacity+=(targetCap-smoothedCapacity)*smoothFactor;
+        jd+=(dtMs/1000/86400)*timeMultiplier;
+        let realNow=Date.now()/86400000+2440587.5;
+        let temporalCertainty=Math.exp(-Math.abs(jd-realNow)*0.5);
+        let dx=cx-prev_cx,dy=cy-prev_cy,dz=cz-prev_cz;
+        let localityCertainty=Math.exp(-Math.sqrt(dx*dx+dy*dy+dz*dz)/scale*5);
+        prev_cx=cx;prev_cy=cy;prev_cz=cz;
+
+        const vp=new Float32Array([cx,cy,cz,scale,RX,RY,massCount,0,dwellTime,motion,ambientLux,observerCapacity,deviceAccX,deviceAccY,deviceAccZ,0,deviceMagX,deviceMagY,deviceMagZ,0,yaw,pitch,0,0,micVolume,cameraLux,temporalCertainty,localityCertainty,obsLat,obsLon,obsAlt,camRot]);
+        gl.bindBuffer(gl.UNIFORM_BUFFER,vpBuf);gl.bufferData(gl.UNIFORM_BUFFER,vp,gl.DYNAMIC_DRAW);
+
+        gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLES,0,3);
+    }catch(e){console.error(e);}
+}
+
+async function loopGL(){renderGL();requestAnimationFrame(loopGL);}
+setInterval(fetchGL,STREAM_INTERVAL);
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+if(splash)splash.style.display='none';
+loopGL();
+}
 } catch(e) { showError(e.message); console.error(e); }
 })();
 </script></body></html>"#;
