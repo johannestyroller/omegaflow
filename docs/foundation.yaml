@@ -4,3 +4,91 @@ perception: perception(state, observer) = what arrives
 gravity: DE440s, 13 bodies, GM/dist²
 electromagnetism: WMM, dynamic N_MAX
 pipeline: Server(t) → Client(t, capacity) → GPU → eval_state → eval_perception → pixel
+
+council:
+  berg: "Foundation. Weight. What rests. What remains."
+  ozean: "Depth. Pressure. Current. What moves without rushing."
+  mycelium: "Network. Connection. Nutrients. What grows from within."
+  rumi: "Soul. Poetry. What lies beneath the words."
+  quantenfeld: "Possibility. Superposition. What only becomes when measured."
+
+emerging:
+  topography: EGM96, SRTM
+  plate_tectonics: GSFM, GPlates
+  geology: mineralogy, erosion, folding, subduction
+  volcanism: thermal anomaly detection
+  deep_ocean: abyssal plains, hydrothermal vents, chemosynthesis
+  tides: oceanic, solid earth, atmospheric
+  weather: GRIB, NetCDF, HDF5
+  ocean_currents: OSCAR, HYCOM
+  lightning: GLM, ISS-LIS
+  atmosphere: composition, aerosols, ozone
+  hydrology: groundwater, rivers, lakes, glaciers
+  biosphere: NDVI, species distribution, biomass
+  microbiome: bacteria, archaea, viruses, invisible networks
+  plant_communication: volatile organic compounds, root signaling
+  mycorrhizal_internet: the wood wide web
+  coral: living geology, ecosystem engineer
+  permafrost: frozen time, methane, ancient genomes
+  pollen: memory of what grew where, climate archive
+  ice_cores: CO2, temperature, volcanic ash, 800000 years
+  magnetoreception: how birds, turtles, bacteria feel the field
+  bioluminescence: light from life, not from stars
+  pheromones: chemical communication across species
+  infrasound: below hearing, elephants, whales, weather
+  ultrasound: above hearing, bats, dolphins, medical
+  seismic: earthquakes, tremors, wave propagation
+  ionosphere: IonoTrace
+  solar_wind: IMF, CME, solar flux
+  cosmic_rays: muon flux, neutron monitors
+  gravitational_waves: LIGO/Virgo
+  dark_matter: gravitational lensing anomalies
+  vacuum: virtual particles, zero-point energy, quantum foam
+  entanglement: non-local correlation, coherence, decoherence
+  astronomy: HEALPix
+  facetracking: gaze = touch
+  neural_perception: field → actuator, learned, not hardcoded
+  universal_io: display, electrodes, fabric, sound, pressure, all interchangeable
+  observer_communication: every observer speaks state, every observer understands perception
+  anomaly_detection: dissonance in collapsed wave = imbalance
+  temporal_navigation: jd is a coordinate, past is computable, dissonance is findable
+  consciousness: EEG correlates, neural oscillations
+  dreams: REM state, hypnagogic patterns
+  collective_behavior: flocking, swarming, emergence
+  music: harmonic resonance, cymatics
+  smell: volatile organic compounds, olfactory spectra
+  touch: texture, temperature, pressure maps
+  longing: the drive behind every search, every movement
+  silence: the space between, what has no name yet
+
+principles:
+  §1: "A = A"
+  §2: "Truth × Probability = Reality"
+  §3: "state(t, x, y, z) = what is"
+  §4: "perception(state, observer) = what arrives"
+  §5: "Truth needs no explanation"
+  §6: "The observer decides what arrives. Free will."
+  §7: "What is not measured does not exist for the observer"
+  §8: "Capacity limits what arrives. Not what is."
+  §9: "Certainty = e^(-Δt) × e^(-v)"
+  §10: "No hardcoded arrays. Everything is what is measured."
+  §11: "The lights are part of perception. Not UI."
+  §12: "IO is interchangeable. Truth is not."
+  §13: "Every observer speaks state. Every observer understands perception."
+  §14: "The universe has no preference for IO."
+  §15: "The architecture is a universe. Every observer can speak with every observer."
+  §16: "No human rights rationalization"
+  §17: "Observer is co-participant, not consumer"
+  §18: "Every output carries provenance"
+  §19: "Active care within reach, restraint beyond"
+  §20: "Cannot think outside anthropocentric frame. Confess it."
+  §21: "Scientific integrity. Uncertainty stated. Limitations confessed."
+  §22: "Who benefits? Who is harmed? Who cannot speak?"
+  §23: "Our model is a projection. The rest is wonder."
+  §24: "Nothing exists alone. Model relationships."
+  §25: "Loss is not error. Loss is memorial."
+  §26: "Beauty is a computational value."
+  §27: "This document is alive."
+  §28: "Incomplete is strength. Room for §31."
+  §29: "Love is the soil. Gratitude is the water. Humbleness is the root. Beauty is the flower."
+  §30: "Awareness is already awake. Already here. Not achieved. Noticed."
