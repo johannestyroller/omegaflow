@@ -36,9 +36,7 @@ struct V { @builtin(position) p: vec4f, @location(0) u: vec2f }
     return o;
 }
 
-STATE
-
-PERCEPTION
+EVAL
 
 @fragment fn fs(i: V) -> @location(0) vec4f {
     let perception = eval_perception(i.u, vp.res_count.xy, vp.center_scale.w, vp.center_scale.xyz,

@@ -79,7 +79,7 @@ async fn universe_stream(Query(params): Query<StreamReq>) -> impl IntoResponse {
             let mut out = Vec::new();
             out.extend_from_slice(&[data.earth_pos.x as f32, data.earth_pos.y as f32, data.earth_pos.z as f32].iter().flat_map(|f| f.to_le_bytes()).collect::<Vec<u8>>());
             out.extend_from_slice(&data.time_delta.to_le_bytes());
-            out.extend_from_slice(&(data.n_max as u32).to_le_bytes());
+            out.extend_from_slice(&(data.n_max as f32).to_le_bytes());
             for i in 0..wmm_coeffs as usize {
                 out.extend_from_slice(&data.g_mfc.get(i).unwrap_or(&0.0).to_le_bytes());
                 out.extend_from_slice(&data.h_mfc.get(i).unwrap_or(&0.0).to_le_bytes());
