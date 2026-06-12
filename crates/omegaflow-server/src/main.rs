@@ -27,6 +27,7 @@ async fn webgl_js() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "application/javascript")], include_str!("../static/webgl.js"))
 }
 
+use regex::Regex;
 fn glsl_to_wgsl(glsl: &str) -> String {
     let mut s = glsl.to_string();
     s = s.replace("float ", "f32 ");
@@ -41,7 +42,45 @@ fn glsl_to_wgsl(glsl: &str) -> String {
     s = s.replace("int(", "i32(");
     s = s.replace("uint(", "u32(");
     s = s.replace("const ", "let ");
+    // GLSL function: type name(params) { → fn name(params) -> type {
+    let fn_re = Regex::new(r"(?m)^(vec2f|vec3f|vec4f|f32|i32|u32|bool|void)\s+(\w+)\s*\(([^)]*)\)\s*\{").unwrap();
+    s = fn_re.replace_all(&s, |caps: &regex::Captures| {
+        let ret = caps.get(1).unwrap().as_str();
+        let name = caps.get(2).unwrap().as_str();
+        let params = caps.get(3).unwrap().as_str();
+        let wgsl_params = convert_params(params);
+        if ret == "void" {
+            format!("fn {}({}) {{", name, wgsl_params)
+        } else {
+            format!("fn {}({}) -> {} {{", name, wgsl_params, ret)
+        }
+    }).to_string();
+    // GLSL struct: struct name { → struct name {
+    // GLSL var decl: type name = → let name: type =
+    let var_re = Regex::new(r"(?m)^\s+(vec2f|vec3f|vec4f|f32|i32|u32|bool)\s+(\w+)\s*=").unwrap();
+    s = var_re.replace_all(&s, |caps: &regex::Captures| {
+        let ty = caps.get(1).unwrap().as_str();
+        let name = caps.get(2).unwrap().as_str();
+        format!("let {}:{}=", name, ty)
+    }).to_string();
+    // struct field: type name; → name: type,
+    // (handled by keeping GLSL struct syntax which is close enough)
     s
+}
+
+fn convert_params(params: &str) -> String {
+    if params.trim().is_empty() { return String::new(); }
+    params.split(',').map(|p| {
+        let p = p.trim();
+        let mut parts: Vec<&str> = p.splitn(2, ' ').collect();
+        if parts.len() == 2 {
+            let ty = parts[0].trim();
+            let name = parts[1].trim();
+            format!("{}: {}", name, ty)
+        } else {
+            p.to_string()
+        }
+    }).collect::<Vec<_>>().join(", ")
 }
 
 async fn eval_state_wgsl() -> impl IntoResponse {
