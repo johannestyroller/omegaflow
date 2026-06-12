@@ -23,7 +23,10 @@ pub fn init() {
 }
 
 pub fn raw_hgt_tile(lat0: i32, lon0: i32) -> Vec<u8> {
-    let cache = HGT_CACHE.get().unwrap();
+    let cache = match HGT_CACHE.get() {
+        Some(c) => c,
+        None => return Vec::new(),
+    };
     let mut guard = cache.lock().unwrap();
     
     if !guard.contains_key(&(lat0, lon0)) {
