@@ -43,7 +43,8 @@ fn glsl_to_wgsl(glsl: &str) -> String {
     s = s.replace("uint(", "u32(");
     s = s.replace("const ", "let ");
     // GLSL function: type name(params) { → fn name(params) -> type {
-    let fn_re = Regex::new(r"(?m)^(vec2f|vec3f|vec4f|f32|i32|u32|bool|void)\s+(\w+)\s*\(([^)]*)\)\s*\{").unwrap();
+    // matches primitive types and custom struct types (not 'struct' keyword)
+    let fn_re = Regex::new(r"(?m)^(?!struct\b)(\w+)\s+(\w+)\s*\(([^)]*)\)\s*\{").unwrap();
     s = fn_re.replace_all(&s, |caps: &regex::Captures| {
         let ret = caps.get(1).unwrap().as_str();
         let name = caps.get(2).unwrap().as_str();
