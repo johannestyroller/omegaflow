@@ -20,12 +20,11 @@ struct VP {
 @group(0) @binding(5) var camera_tex: texture_2d<f32>;
 @group(0) @binding(6) var camera_sampler: sampler;
 
-#define MASS(i) masses[i]
-#define WMM(i) wmm[i]
-#define TERRAIN(x,y) f32(textureLoad(terrain_raw, vec2u(u32(x), u32(y)), 0).x)
-#define EGM96(u,v) textureSample(egm96_tex, camera_sampler, vec2f(u, v)).r
-#define CAMERA(uv) textureSample(camera_tex, camera_sampler, uv).rgb
-#define VP_FIELD(f, swizzle) f.swizzle
+fn MASS(i: i32) -> vec4f { return masses[i]; }
+fn WMM(i: i32) -> f32 { return wmm[i]; }
+fn TERRAIN(x: i32, y: i32) -> f32 { return f32(textureLoad(terrain_raw, vec2u(u32(x), u32(y)), 0).x); }
+fn EGM96(u: f32, v: f32) -> f32 { return textureSample(egm96_tex, camera_sampler, vec2f(u, v)).r; }
+fn CAMERA(uv: vec2f) -> vec3f { return textureSample(camera_tex, camera_sampler, uv).rgb; }
 
 struct V { @builtin(position) p: vec4f, @location(0) u: vec2f }
 
