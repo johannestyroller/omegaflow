@@ -14,7 +14,6 @@ fn main() {
     if lower.ends_with(".bsp") { compile_spk(&data, &mut out); }
     else if lower.ends_with(".pca") { out.push(b'p'); w32(&mut out, data.len() as u32); out.extend_from_slice(&data); }
     else if lower.ends_with(".dac") { compile_egm96(&data, &mut out); }
-    else if lower.ends_with(".hgt") { compile_hgt(&data, &mut out); }
     else if lower.contains("wmm") || lower.ends_with(".cof") { compile_wmm(&mut out); }
     else { eprintln!("unknown: {}", input); std::process::exit(1); }
     fs::write(output, &out).expect("write");
@@ -32,12 +31,9 @@ fn compile_spk(data: &[u8], out: &mut Vec<u8>) {
     let nd = r32i(data, 8) as usize;
     let ni = r32i(data, 12) as usize;
     let sb = nd * 8 + ni * 4;
-    let sb = sb + (8 - sb % 8) % 8; // pad to 8
+    let sb = sb + (8 - sb % 8) % 8;
 
     let fsum = r32i(data, 76) as usize;
-
-    // Summaries start 104 bytes into the first summary record
-    // (8 bytes next/count + 96 bytes name strings)
     let base = (fsum - 1) * 1024 + 104;
 
     let mut sums = Vec::new();
@@ -60,7 +56,6 @@ fn compile_spk(data: &[u8], out: &mut Vec<u8>) {
 
     struct Seg { target: i32, center: i32, start: f64, end: f64, recs: Vec<(f64, f64, Vec<f64>, Vec<f64>, Vec<f64>)> }
     let mut segs = Vec::new();
-
     for &(target, center, start, end, si, ei) in &sums {
         let ds = (si - 1) * 8;
         let de = ei * 8;
@@ -90,6 +85,7 @@ fn compile_spk(data: &[u8], out: &mut Vec<u8>) {
         w32(out, seg.center as u32);
         wf64(out, seg.start);
         wf64(out, seg.end);
+        wf64(out, 0.0); // domain_radius: filled by client, 0 = infinite for now
         w32(out, seg.recs.len() as u32);
         for (mid, rad, cx, cy, cz) in &seg.recs {
             wf64(out, *mid);
@@ -133,19 +129,4 @@ fn compile_egm96(data: &[u8], out: &mut Vec<u8>) {
     wf32(out, mn); wf32(out, r); w32(out, 721); w32(out, 1440);
     for &x in &v { wf32(out, (x-mn)/r); }
     eprintln!("egm96: {} values", v.len());
-}
-
-fn compile_hgt(data: &[u8], out: &mut Vec<u8>) {
-    out.push(b'h');
-    let exp = 2884802;
-    if data.len() != exp { eprintln!("hgt: expected {} bytes", exp); std::process::exit(1); }
-    let h: Vec<f32> = data.chunks_exact(2).map(|c|{let r=i16::from_be_bytes([c[0],c[1]]); if r==-32768{0.0}else{r as f32}}).collect();
-    let mut pts: Vec<(f32,f32,f32)> = Vec::new();
-    for y in 1..1200 { for x in 1..1200 {
-        let i=y*1201+x; let dx=(h[i+1]-h[i-1])*0.5; let dy=(h[i+1201]-h[i-1201])*0.5;
-        if (dx*dx+dy*dy).sqrt()>1.0||h[i].abs()>10.0 { pts.push((x as f32/1201.0, y as f32/1201.0, h[i])); }
-    }}
-    wf32(out, 0.0); wf32(out, 0.0); w32(out, pts.len() as u32);
-    for &(u,v,a) in &pts { wf32(out, u); wf32(out, v); wf32(out, a); }
-    eprintln!("hgt: {} sparse points", pts.len());
 }
